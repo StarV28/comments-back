@@ -1,0 +1,6 @@
+{
+  "watch": ["src", "bin", "config", "db", "middleware", "utils", "*.ts"],
+  "ext": ".ts, .mjs, js",
+  "ignore": [],
+  "exec": "npx tsx ./bin/www.ts"
+}

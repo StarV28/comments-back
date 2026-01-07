@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql" 
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @db.VarChar(50)
+  email     String    @db.VarChar(100)
+  homepage  String?   @db.VarChar(255)
+  ip        String    @db.VarChar(45)
+  createdAt DateTime  @default(now())
+
+  comments  Comment[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  text      String    @db.Text
+  createdAt DateTime  @default(now())
+
+  userId    Int
+  parentId  Int?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentToComment")
+
+  files     File[]
+
+    ip        String?   @db.VarChar(45)
+
+  @@index([createdAt])
+  @@index([parentId])
+}
+
+model File {
+  id           Int      @id @default(autoincrement())
+  type         FileType
+  path         String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  size         Int
+  width        Int?
+  height       Int?
+  createdAt    DateTime @default(now())
+
+  commentId    Int
+  comment      Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+}
+
+enum FileType {
+  image
+  txt
+}
