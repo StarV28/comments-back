@@ -11,7 +11,6 @@ model User {
   id        Int       @id @default(autoincrement())
   username  String    @db.VarChar(50)
   email     String    @db.VarChar(100)
-  homepage  String?   @db.VarChar(255)
   ip        String    @db.VarChar(45)
   createdAt DateTime  @default(now())
 
@@ -35,8 +34,6 @@ model Comment {
 
   files     File[]
 
-    ip        String?   @db.VarChar(45)
-
   @@index([createdAt])
   @@index([parentId])
 }
@@ -49,7 +46,6 @@ model File {
   size         Int
   width        Int?
   height       Int?
-  createdAt    DateTime @default(now())
 
   commentId    Int
   comment      Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
