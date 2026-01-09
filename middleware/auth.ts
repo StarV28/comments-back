@@ -24,7 +24,7 @@ const auth = (app: Express): void => {
 
   // JWT Authentication Middleware
   app.use(async (req: Request, res: Response, next: NextFunction) => {
-    const openPaths = ["/api/auth/login", "/api/auth/signup"];
+    const openPaths = ["/api/auth/login", "/api/auth/signUp"];
     const isOpen = openPaths.some((p) => req.path.startsWith(p));
     if (isOpen) return next();
 

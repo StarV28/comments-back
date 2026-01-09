@@ -18,9 +18,11 @@ const port: number | string | false = normalizePort(process.env.PORT || "3000");
 app.set("port", port);
 
 const server: http.Server = http.createServer(app);
-server.listen(port);
 server.on("error", onError);
 server.on("listening", onListening);
+server.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
+});
 
 function onError(error: NodeJS.ErrnoException): void {
   if (error.syscall !== "listen") throw error;
