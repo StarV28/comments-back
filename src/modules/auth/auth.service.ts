@@ -22,10 +22,12 @@ export default class AuthServices {
       });
 
       const user = {
-        id: result.id,
-        username: result.username,
-        email: result.email,
-        createdAt: result.createdAt,
+        user: {
+          id: result.id,
+          username: result.username,
+          email: result.email,
+          createdAt: result.createdAt,
+        },
         token,
       };
 
@@ -59,16 +61,29 @@ export default class AuthServices {
         email: user.email,
       });
       const userRes = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        createdAt: user.createdAt,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          createdAt: user.createdAt,
+        },
         token,
       };
 
       return userRes;
     } catch (err) {
       console.error("Error login user services", (err as Error)?.message);
+      throw err;
+    }
+  }
+  //---------------------------------------//
+  static async deleteUserService(id: number) {
+    try {
+      await prisma.user.delete({
+        where: { id },
+      });
+    } catch (err) {
+      console.error("Error delete user services", (err as Error)?.message);
       throw err;
     }
   }

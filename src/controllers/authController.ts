@@ -20,7 +20,7 @@ export default class AuthController {
 
       const result = await AuthServices.userCreate(data);
 
-      res.status(201).json({ result });
+      res.status(201).json(result);
     } catch (err: unknown) {
       console.error(err);
       res.status(500).json({ message: "Server error", err });
@@ -31,10 +31,36 @@ export default class AuthController {
     try {
       const data = req.body.data || req.body;
       const result = await AuthServices.logIn(data);
-      res.status(200).json({ result });
+      res.status(200).json(result);
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error", err });
+    }
+  }
+  //---------------------------------------//
+  static async authMeController(req: Request, res: Response) {
+    try {
+      await res.status(200).json({ user: req.user });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error", err });
+    }
+  }
+  //---------------------------------------//
+  static async deleteUserController(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+
+      if (!id || Number.isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user id" });
+      }
+
+      await AuthServices.deleteUserService(id);
+
+      res.status(200).json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
     }
   }
 }

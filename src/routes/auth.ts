@@ -7,4 +7,8 @@ router.post("/signUp", AuthController.createUser);
 
 router.post("/login", AuthController.logInUser);
 
+router.get("/me", AuthController.authMeController);
+
+router.delete("/:id", AuthController.deleteUserController);
+
 export default router;
