@@ -1,135 +1,168 @@
 import prisma from "../../../prisma/prisma.js";
-
-//-------------------------------------------------------------------------------------//
+import { sanitizeContent } from "../../../utils/sanitize.js";
 
 export default class CommentsService {
-  //---------------------------------------//
-  static async create(userId: number, parentId: number, text: string) {
-    try {
-      if (parentId) {
-        const parentExists = await prisma.comment.findUnique({
-          where: { id: parentId },
-        });
-        if (!parentExists) {
-          return false;
-        }
-      }
+  // --------------------------------
+  static async create(
+    userId: number,
+    parentId: number | null,
+    content: string
+  ) {
+    const cleanContent = sanitizeContent(content);
 
-      const comment = await prisma.comment.create({
-        data: {
-          text,
-          userId,
-          parentId: parentId || null,
-        },
-      });
-      return comment;
-    } catch (err) {
-      console.error("Error create comments services", (err as Error)?.message);
-      throw err;
+    if (!cleanContent.trim()) {
+      throw new Error("Empty content after sanitize");
     }
-  }
-  //---------------------------------------//
 
-  static async getList(page: number, sortBy: string, order: string) {
-    try {
-      const limit = 25;
-      const skip = (page - 1) * limit;
+    if (parentId) {
+      const parent = await prisma.comment.findUnique({
+        where: { id: parentId },
+        select: { id: true },
+      });
 
-      let orderBy: {
-        user?: { username?: "asc" | "desc"; email?: "asc" | "desc" };
-        createdAt?: "asc" | "desc";
-      };
-
-      switch (sortBy) {
-        case "username":
-          orderBy = { user: { username: order as "asc" | "desc" } };
-          break;
-        case "email":
-          orderBy = { user: { email: order as "asc" | "desc" } };
-          break;
-        case "createdAt":
-        default:
-          orderBy = { createdAt: order as "asc" | "desc" };
-          break;
+      if (!parent) {
+        throw new Error("Parent comment not found");
       }
+    }
 
-      const [comments, total] = await Promise.all([
-        prisma.comment.findMany({
-          where: { parentId: null },
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-              },
-            },
-            replies: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    username: true,
-                  },
-                },
-                files: true,
-              },
-            },
-            files: true,
+    const comment = await prisma.comment.create({
+      data: {
+        content: cleanContent,
+        userId,
+        parentId: parentId || null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
           },
-          orderBy,
-          skip,
-          take: limit,
-        }),
-        prisma.comment.count({
-          where: { parentId: null },
-        }),
-      ]);
+        },
+        files: true,
+      },
+    });
 
-      const totalPages = Math.ceil(total / limit);
-      return {
-        comments: comments,
-        total: total,
-        totalPages: totalPages,
-        limit,
-      };
-    } catch (err) {
-      console.error(
-        "Error getting comments list services",
-        (err as Error)?.message
-      );
-      throw err;
-    }
+    return comment;
   }
-  //---------------------------------------//
-  static async update(userId: number, id: number, text: string) {
-    try {
-      const comment = await prisma.comment.updateMany({
-        where: { id, userId },
-        data: { text },
-      });
-      return comment;
-    } catch (err) {
-      console.error("Error update comments services", (err as Error)?.message);
-      throw err;
+
+  // --------------------------------//
+  static async getRootComments(
+    page: number,
+    sortBy: "username" | "email" | "createdAt",
+    order: "asc" | "desc"
+  ) {
+    const limit = 25;
+    const skip = (page - 1) * limit;
+
+    let orderBy;
+
+    switch (sortBy) {
+      case "username":
+        orderBy = { user: { username: order } };
+        break;
+      case "email":
+        orderBy = { user: { email: order } };
+        break;
+      case "createdAt":
+      default:
+        orderBy = { createdAt: order };
+        break;
     }
+
+    const [comments, total] = await Promise.all([
+      prisma.comment.findMany({
+        where: { parentId: null },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+            },
+          },
+          files: true,
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      prisma.comment.count({
+        where: { parentId: null },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      comments,
+      total,
+      totalPages,
+      limit,
+    };
   }
-  //---------------------------------------//
-  static async deleteCommentsService(id: number, userId: number) {
-    try {
-      const commentExists = await prisma.comment.findFirst({
-        where: { id: id, userId: userId },
-      });
-      if (!commentExists) {
-        return false;
-      }
-      await prisma.comment.delete({
-        where: { id: id },
-      });
-      return true;
-    } catch (err) {
-      console.error("Error delete comment services", (err as Error)?.message);
-      throw err;
+
+  // --------------------------------//
+  static async getReplies(parentId: number) {
+    const replies = await prisma.comment.findMany({
+      where: { parentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        files: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return replies;
+  }
+
+  // --------------------------------//
+  static async update(userId: number, commentId: number, content: string) {
+    const cleanContent = sanitizeContent(content);
+
+    if (!cleanContent.trim()) {
+      throw new Error("Empty content after sanitize");
     }
+
+    const existing = await prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        userId,
+      },
+    });
+
+    if (!existing) {
+      throw new Error("Comment not found or not owned by user");
+    }
+
+    const updated = await prisma.comment.update({
+      where: { id: commentId },
+      data: { content: cleanContent },
+    });
+
+    return updated;
+  }
+
+  // --------------------------------//
+  static async delete(commentId: number, userId: number) {
+    const result = await prisma.comment.deleteMany({
+      where: {
+        id: commentId,
+        userId,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new Error("Comment not found or not owned by user");
+    }
+
+    return true;
   }
 }

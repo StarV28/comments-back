@@ -69,7 +69,6 @@ export default class AuthServices {
         },
         token,
       };
-
       return userRes;
     } catch (err) {
       console.error("Error login user services", (err as Error)?.message);

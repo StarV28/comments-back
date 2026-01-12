@@ -1,37 +1,56 @@
 import { Request, Response } from "express";
 import CommentsService from "../modules/comments/comments.service.js";
 
-//-------------------------------------------------------------------------------------//
-
 export default class CommentsController {
   //---------------------------------------//
-  static async createComments(req: Request, res: Response) {
+
+  static async create(req: Request, res: Response) {
     try {
-      const { text, parentId } = req.body;
+      const { content, parentId } = req.body;
       const userId = req.user?.id;
 
-      if (!text || !userId) {
-        return res.status(400).json({ message: "Text and user required" });
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const comment = await CommentsService.create(userId, parentId, text);
-      if (!comment) {
-        return res.status(401).json({ success: false });
+      if (!content || typeof content !== "string") {
+        return res.status(400).json({ message: "Content is required" });
       }
-      return res.status(201).json({ success: true, comment });
-    } catch (err: unknown) {
-      res.status(500).json({ message: "Server error", err });
+
+      const parentIdNum = parentId ? Number(parentId) : null;
+
+      const comment = await CommentsService.create(
+        userId,
+        parentIdNum,
+        content
+      );
+
+      return res.status(201).json({ comment });
+    } catch (err) {
+      return res
+        .status(400)
+        .json({ message: (err as Error)?.message || "Create failed" });
     }
   }
+
   //---------------------------------------//
-  static async getCommentsList(req: Request, res: Response) {
+
+  static async getList(req: Request, res: Response) {
     try {
       const page = Number(req.query.page) || 1;
+      const sortByRaw = (req.query.sortBy as string) || "createdAt";
+      const orderRaw = req.query.order === "asc" ? "asc" : "desc";
 
-      const sortBy = (req.query.sortBy as string) || "createdAt";
-      const order = req.query.order === "asc" ? "asc" : "desc";
+      const allowedSort = ["username", "email", "createdAt"] as const;
+      const sortBy = (allowedSort as readonly string[]).includes(sortByRaw)
+        ? (sortByRaw as "username" | "email" | "createdAt")
+        : "createdAt";
 
-      const result = await CommentsService.getList(page, sortBy, order);
+      const result = await CommentsService.getRootComments(
+        page,
+        sortBy,
+        orderRaw
+      );
 
       return res.status(200).json({
         comments: result.comments,
@@ -49,55 +68,68 @@ export default class CommentsController {
   }
 
   //---------------------------------------//
-  static async updateComments(req: Request, res: Response) {
+
+  static async getReplies(req: Request, res: Response) {
     try {
-      const { text } = req.body;
-      const id = parseInt(req.params.id, 10);
-      const userId = req.user?.id;
+      const parentId = Number(req.params.id);
 
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
+      if (!parentId) {
+        return res.status(400).json({ message: "Invalid parent id" });
       }
 
-      const comment = await CommentsService.update(userId, id, text);
+      const replies = await CommentsService.getReplies(parentId);
 
-      if (comment.count === 0) {
-        return res
-          .status(404)
-          .json({ message: "Comment not found or not yours" });
-      }
-
-      return res.status(200).json({ comment });
-    } catch (err: unknown) {
+      return res.status(200).json({ replies });
+    } catch (err) {
       console.error(err);
-      res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ message: "Server error" });
     }
   }
+
   //---------------------------------------//
-  static async deleteComments(req: Request, res: Response) {
+
+  static async update(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const { content } = req.body;
+      const commentId = Number(req.params.id);
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const result = await CommentsService.deleteCommentsService(
-        parseInt(id),
-        userId
-      );
-
-      if (!result) {
-        return res
-          .status(404)
-          .json({ message: "Comment not found or not yours" });
+      if (!content || typeof content !== "string") {
+        return res.status(400).json({ message: "Content is required" });
       }
 
-      return res.status(200).json({ message: "Comment deleted successfully" });
-    } catch (err: unknown) {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
+      const updated = await CommentsService.update(userId, commentId, content);
+
+      return res.status(200).json({ comment: updated });
+    } catch (err) {
+      return res
+        .status(400)
+        .json({ message: (err as Error)?.message || "Update failed" });
+    }
+  }
+
+  //---------------------------------------//
+
+  static async delete(req: Request, res: Response) {
+    try {
+      const commentId = Number(req.params.id);
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      await CommentsService.delete(commentId, userId);
+
+      return res.status(200).json({ message: "Comment deleted" });
+    } catch (err) {
+      return res
+        .status(400)
+        .json({ message: (err as Error)?.message || "Delete failed" });
     }
   }
 }

@@ -3,12 +3,14 @@ import CommentsController from "../controllers/commentsController.js";
 
 const router: Router = express.Router();
 
-router.post("/", CommentsController.createComments);
+router.post("/", CommentsController.create);
 
-router.get("/", CommentsController.getCommentsList);
+router.get("/", CommentsController.getList);
 
-router.put("/:id", CommentsController.updateComments);
+router.get("/:id/replies", CommentsController.getReplies);
 
-router.delete("/:id", CommentsController.deleteComments);
+router.put("/:id", CommentsController.update);
+
+router.delete("/:id", CommentsController.delete);
 
 export default router;

@@ -21,7 +21,6 @@ const auth = (app: Express): void => {
     );
     next();
   });
-
   // JWT Authentication Middleware
   app.use(async (req: Request, res: Response, next: NextFunction) => {
     const openPaths = ["/api/auth/login", "/api/auth/signUp"];
@@ -42,7 +41,7 @@ const auth = (app: Express): void => {
       }
 
       // Сохраняем расшифрованный токен в req.user
-      req.user = parseBearer(req.headers.authorization, headers);
+      req.user = parseBearer(req.headers.authorization);
     } catch (err: unknown) {
       return res.status(401).json({
         result: "Access Denied: Invalid token",
