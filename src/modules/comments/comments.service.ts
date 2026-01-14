@@ -52,7 +52,7 @@ export default class CommentsService {
     sortBy: "username" | "email" | "createdAt",
     order: "asc" | "desc"
   ) {
-    const limit = 25;
+    const limit = 5;
     const skip = (page - 1) * limit;
 
     let orderBy;
@@ -82,6 +82,11 @@ export default class CommentsService {
             },
           },
           files: true,
+          _count: {
+            select: {
+              replies: true,
+            },
+          },
         },
         orderBy,
         skip,
@@ -114,6 +119,11 @@ export default class CommentsService {
           },
         },
         files: true,
+        _count: {
+          select: {
+            replies: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "asc",

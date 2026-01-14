@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import CommentsService from "../modules/comments/comments.service.js";
+import { uploadManager } from "../services/uploadManager.js";
 
 export default class CommentsController {
   //---------------------------------------//
 
   static async create(req: Request, res: Response) {
     try {
+      console.log("req-------", req.body);
       const { content, parentId } = req.body;
       const userId = req.user?.id;
 
@@ -25,7 +27,13 @@ export default class CommentsController {
         content
       );
 
-      return res.status(201).json({ comment });
+      let file = null;
+
+      if (req.file) {
+        file = await uploadManager.handleUpload(req.file, comment.id);
+      }
+
+      return res.status(201).json({ ...comment, file });
     } catch (err) {
       return res
         .status(400)
@@ -40,7 +48,6 @@ export default class CommentsController {
       const page = Number(req.query.page) || 1;
       const sortByRaw = (req.query.sortBy as string) || "createdAt";
       const orderRaw = req.query.order === "asc" ? "asc" : "desc";
-
       const allowedSort = ["username", "email", "createdAt"] as const;
       const sortBy = (allowedSort as readonly string[]).includes(sortByRaw)
         ? (sortByRaw as "username" | "email" | "createdAt")
@@ -78,7 +85,6 @@ export default class CommentsController {
       }
 
       const replies = await CommentsService.getReplies(parentId);
-
       return res.status(200).json({ replies });
     } catch (err) {
       console.error(err);
