@@ -11,11 +11,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const middleware = (app: Express): void => {
+  // Middleware для статических файлов из public
+  app.use(express.static(path.join(__dirname, "../public")));
+
+  // Middleware для статических файлов из uploads
+  // app.use(express.static(path.join(__dirname, "./uploads")));
+  const uploadsPath = path.join(process.cwd(), "uploads");
+  app.use("/uploads", express.static(uploadsPath));
+
   // Middleware для CORS
   app.use(cors());
-
-  // Middleware для аутентификации
-  auth(app);
 
   // Middleware для логирования запросов
   app.use(logger("dev"));
@@ -29,11 +34,8 @@ const middleware = (app: Express): void => {
   // Middleware для парсинга cookies
   app.use(cookieParser());
 
-  // Middleware для статических файлов из public
-  app.use(express.static(path.join(__dirname, "../public")));
-
-  // Middleware для статических файлов из uploads
-  app.use(express.static(path.join(__dirname, "../uploads")));
+  // Middleware для аутентификации
+  auth(app);
 };
 
 export default middleware;

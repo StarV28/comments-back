@@ -1,82 +1,82 @@
-import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
-import prisma from "../../prisma/prisma.js";
-import { FileType } from "@prisma/client";
+import { v4 as uuidv4 } from "uuid";
+import config from "../../config/index.js";
 
-class UploadManager {
-  private uploadDir = path.resolve("uploads");
+export type UploadResult = {
+  path: string;
+  url: string;
+  originalName: string;
+  size: number;
+  type: "image" | "txt";
+  width?: number;
+  height?: number;
+};
 
-  async handleUpload(file: Express.Multer.File, commentId: number) {
-    await this.ensureUploadDirExists();
+export class UploadManager {
+  private uploadDir: string;
 
-    if (file.mimetype.startsWith("image/")) {
-      return this.processImage(file, commentId);
+  constructor(uploadDir = "uploads") {
+    this.uploadDir = path.join(process.cwd(), uploadDir);
+  }
+
+  private async ensureUploadDir() {
+    await fs.mkdir(this.uploadDir, { recursive: true });
+  }
+
+  async handleFile(file: Express.Multer.File): Promise<UploadResult> {
+    await this.ensureUploadDir();
+
+    const ext = path.extname(file.originalname).toLowerCase();
+    const filename = `${uuidv4()}${ext}`;
+    const fullPath = path.join(this.uploadDir, filename);
+
+    if (ext === ".txt") {
+      await fs.writeFile(fullPath, file.buffer);
+
+      const stat = await fs.stat(fullPath);
+      return {
+        path: `/uploads/${filename}`,
+        url: `${config.base_url}/uploads/${filename}`,
+        originalName: file.originalname,
+        size: stat.size,
+        type: "txt",
+      };
     }
 
-    if (file.mimetype === "text/plain") {
-      return this.processTextFile(file, commentId);
+    if ([".jpg", ".jpeg", ".png", ".gif"].includes(ext)) {
+      await sharp(file.buffer)
+        .resize(320, 240, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .toFile(fullPath);
+
+      const meta = await sharp(fullPath).metadata();
+      const stat = await fs.stat(fullPath);
+
+      return {
+        url: `${config.base_url}/uploads/${filename}`,
+        path: `/uploads/${filename}`,
+        originalName: file.originalname,
+        size: stat.size,
+        type: "image",
+        width: meta.width,
+        height: meta.height,
+      };
     }
 
-    throw new Error("Unsupported file type");
+    throw new Error(`Unsupported file type: ${ext}`);
   }
 
-  private async processImage(file: Express.Multer.File, commentId: number) {
-    const ext = path.extname(file.originalname) || ".jpg";
-    const filename = `${uuidv4()}${ext}`;
-    const filePath = path.join(this.uploadDir, filename);
-
-    const metadata = await sharp(file.buffer).metadata();
-
-    await sharp(file.buffer)
-      .resize(320, 240, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .toFile(filePath);
-
-    const { size } = await fs.stat(filePath);
-
-    return prisma.file.create({
-      data: {
-        type: FileType.image,
-        path: `/uploads/${filename}`,
-        originalName: file.originalname,
-        size,
-        width: metadata.width,
-        height: metadata.height,
-        commentId,
-      },
-    });
-  }
-
-  private async processTextFile(file: Express.Multer.File, commentId: number) {
-    const ext = path.extname(file.originalname) || ".txt";
-    const filename = `${uuidv4()}${ext}`;
-    const filePath = path.join(this.uploadDir, filename);
-
-    const content = file.buffer.toString("utf-8");
-    await fs.writeFile(filePath, content, "utf-8");
-
-    return prisma.file.create({
-      data: {
-        type: FileType.txt,
-        path: `/uploads/${filename}`,
-        originalName: file.originalname,
-        size: file.size,
-        commentId,
-      },
-    });
-  }
-
-  private async ensureUploadDirExists() {
+  async deleteFile(filePath: string) {
+    const fullPath = path.join(process.cwd(), filePath);
     try {
-      await fs.access(this.uploadDir);
-    } catch {
-      await fs.mkdir(this.uploadDir, { recursive: true });
+      await fs.unlink(fullPath);
+    } catch (err) {
+      console.warn("File not found or already deleted:", fullPath);
+      throw err;
     }
   }
 }
-
-export const uploadManager = new UploadManager();

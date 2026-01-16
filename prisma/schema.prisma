@@ -45,6 +45,7 @@ model File {
   id           Int      @id @default(autoincrement())
   type         FileType
   path         String   @db.VarChar(255)
+  url         String   @db.VarChar(255)
   originalName String   @db.VarChar(255)
   size         Int
   width        Int?

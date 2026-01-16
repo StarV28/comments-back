@@ -12,6 +12,6 @@ router.get("/:id/replies", CommentsController.getReplies);
 
 router.put("/:id", CommentsController.update);
 
-router.delete("/:id", CommentsController.delete);
+router.delete("/:id/:fileId", CommentsController.delete);
 
 export default router;

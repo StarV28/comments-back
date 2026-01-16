@@ -1,12 +1,17 @@
 import prisma from "../../../prisma/prisma.js";
 import { sanitizeContent } from "../../../utils/sanitize.js";
+import { UploadManager } from "../../services/uploadManager.js";
+//---------------------------------------//
+const uploadManager = new UploadManager();
+//---------------------------------------//
 
 export default class CommentsService {
   // --------------------------------
   static async create(
     userId: number,
     parentId: number | null,
-    content: string
+    content: string,
+    file: Express.Multer.File | null
   ) {
     const cleanContent = sanitizeContent(content);
 
@@ -42,8 +47,25 @@ export default class CommentsService {
         files: true,
       },
     });
+    let savedFile = null;
+    if (file) {
+      const uploadResult = await uploadManager.handleFile(file);
 
-    return comment;
+      savedFile = await prisma.file.create({
+        data: {
+          type: uploadResult.type,
+          path: uploadResult.path,
+          url: uploadResult.url ?? null,
+          originalName: uploadResult.originalName,
+          size: uploadResult.size,
+          width: uploadResult.width ?? null,
+          height: uploadResult.height ?? null,
+          commentId: comment.id,
+        },
+      });
+    }
+
+    return { comment, file: savedFile };
   }
 
   // --------------------------------//
@@ -161,7 +183,16 @@ export default class CommentsService {
   }
 
   // --------------------------------//
-  static async delete(commentId: number, userId: number) {
+  static async delete(commentId: number, userId: number, fileId: number) {
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      include: { files: true },
+    });
+
+    if (!comment) return false;
+    if (comment.files && fileId === comment.files.id) {
+      await uploadManager.deleteFile(comment.files.path);
+    }
     const result = await prisma.comment.deleteMany({
       where: {
         id: commentId,
