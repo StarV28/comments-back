@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import CommentsService from "../modules/comments/comments.service.js";
+import { broadcastToClients } from "../ws/setupWs.js";
 
 export default class CommentsController {
   //---------------------------------------//
@@ -25,6 +26,14 @@ export default class CommentsController {
         content,
         req.file ?? null
       );
+
+      broadcastToClients({
+        type: parentIdNum ? "replies" : "comment",
+        payload: {
+          ...comment.comment,
+          files: comment.file ?? null,
+        },
+      });
 
       return res.status(201).json({ ...comment });
     } catch (err) {

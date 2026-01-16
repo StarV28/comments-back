@@ -1,9 +1,8 @@
-#!/usr/bin/env node
-
 import app from "../app.js";
 import debugLib from "debug";
 import http from "http";
 import type { AddressInfo } from "net";
+import { setupWs } from "../src/ws/setupWs.js";
 
 const debug = debugLib("my-express-app:server");
 
@@ -20,6 +19,8 @@ app.set("port", port);
 const server: http.Server = http.createServer(app);
 server.on("error", onError);
 server.on("listening", onListening);
+
+setupWs(server);
 server.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
 });

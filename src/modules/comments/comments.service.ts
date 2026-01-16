@@ -30,7 +30,7 @@ export default class CommentsService {
       }
     }
 
-    const comment = await prisma.comment.create({
+    const result = await prisma.comment.create({
       data: {
         content: cleanContent,
         userId,
@@ -60,10 +60,14 @@ export default class CommentsService {
           size: uploadResult.size,
           width: uploadResult.width ?? null,
           height: uploadResult.height ?? null,
-          commentId: comment.id,
+          commentId: result.id,
         },
       });
     }
+    const comment = {
+      ...result,
+      createdAt: result.createdAt.toISOString().replace("T", " ").slice(0, 19),
+    };
 
     return { comment, file: savedFile };
   }
