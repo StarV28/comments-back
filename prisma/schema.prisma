@@ -1,0 +1,58 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @db.VarChar(50)
+  password  String    @db.VarChar(150)
+  email     String    @unique @db.VarChar(100)
+  ip        String    @db.VarChar(45)
+  createdAt DateTime  @default(now())
+  comments  Comment[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  userId    Int
+  parentId  Int?
+  content   String    @db.Text
+  parent    Comment?  @relation("CommentTree", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentTree")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files     File?
+
+  @@index([createdAt])
+  @@index([parentId])
+  @@index([userId])
+}
+
+model File {
+  id           Int      @id @default(autoincrement())
+  type         FileType
+  path         String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  size         Int
+  width        Int?
+  height       Int?
+  commentId    Int      @unique
+  url          String   @db.VarChar(255)
+  comment      Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+}
+
+enum FileType {
+  image
+  txt
+}
