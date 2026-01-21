@@ -9,8 +9,7 @@
   "scripts": {
     "dev": "npx nodemon",
     "build": "rimraf ./dist && npx tsc",
-    "start_build": "npm run build && node dist/bin/www.js",
-    "start": "node dist/bin/www.js",
+    "start": "npm run build && node dist/bin/www.js",
     "lint": "npx eslint ./src ./bin ./config ./db ./middleware ./utils ./app.ts",
     "format": "npx eslint ./src ./bin ./config ./db ./middleware ./utils ./app.ts --fix",
     "ps": "prisma studio",
